@@ -1,4 +1,4 @@
 provider "kubernetes" {
-  host = "aws"
+  host = ""
 }
 
