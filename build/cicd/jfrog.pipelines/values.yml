@@ -1,0 +1,14 @@
+gitRepo:
+  gitProvider: 
+  path: /aws-deploy-test
+  TestDBUrl: 
+  TestDBName: bankingbackend_test_db
+  TestDBPassword: 
+  TestDBDialect: org.hibernate.dialect.MySQL8Dialect 
+  TestDBDriver: com.mysql.cj.jdbc.Driver
+  DockerUserName: tylertravismya
+  DockerPassword: 69Cutlass
+  DockerOrgName: theharbormaster
+  DockerRepo: banking-on-spring-boot-3-5
+  DockerHost: docker.io
+  DockerTag: latest
