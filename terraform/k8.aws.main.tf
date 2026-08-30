@@ -11,27 +11,9 @@ module "k8s" {
   source   = "./k8s"
 }
 
-module "rosa" {
-  source  = "terraform-redhat/rosa-hcp/rhcs"
-  version = "1.7.4"
-
-  cluster_name      = "bankingbackend"
-  openshift_version = "4.19.0"
-
-  aws_subnet_ids = aws_subnet.default.id
-
-  create_account_roles  = true
-  create_oidc           = true
-  create_operator_roles = true
-
-  create_admin_user = true
-}
 
 provider "kubernetes" {
-    host     = module.rosa.cluster_api_url
-    username = module.rosa.cluster_admin_username
-    password = module.rosa.cluster_admin_password
-    insecure = true
+    host = aws_eks_cluster.this.endpoint
     cluster_ca_certificate = base64decode(
      aws_eks_cluster.this.certificate_authority_data
     )
