@@ -2,9 +2,6 @@
 # Modules
 module "eks" {
   source   = "./eks"
-  aws_access_key = var.aws_access_key
-  aws_secret_key = var.aws_secret_key
-  region         = var.region
 }
 
 module "k8s" {
@@ -15,7 +12,7 @@ module "k8s" {
 provider "kubernetes" {
     host = aws_eks_cluster.this.endpoint
     cluster_ca_certificate = base64decode(
-     aws_eks_cluster.this.certificate_authority_data
+     aws_eks_cluster.this.certificate_authority[0].data
     )
 
     exec {

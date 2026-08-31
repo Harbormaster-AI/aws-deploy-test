@@ -11,6 +11,13 @@ resource "kubernetes_replication_controller" "app-master" {
     }
 
     template {
+      metadata {
+        labels = {
+          app  = "bankingbackend"
+        }
+      }
+
+      spec {
       container {
         image = "mysql:latest"
         name  = "db-container"
@@ -20,7 +27,7 @@ resource "kubernetes_replication_controller" "app-master" {
         }
 
         resources {
-          requests {
+          requests = {
             cpu    = "100m"
             memory = "100Mi"
           }
@@ -47,7 +54,7 @@ resource "kubernetes_replication_controller" "app-master" {
           value = "letmein2"
         }
         resources {
-          requests {
+          requests = {
             cpu    = "100m"
             memory = "100Mi"
           }
@@ -55,6 +62,7 @@ resource "kubernetes_replication_controller" "app-master" {
 
       }
 
+      }
     }
 
   }
