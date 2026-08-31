@@ -13,7 +13,8 @@ output "kubeconfig-certificate-authority-data" {
 
 output "eks_cluster_endpoint" {
   description = "Endpoint for your Kubernetes API server"
-  value       = aws_eks_cluster.this[0].endpoint
+  value       = "${data.aws_eks_cluster.bankingbackend-cluster.endpoint
 }
+
 
 # Output for K8S
