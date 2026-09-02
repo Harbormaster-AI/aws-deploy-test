@@ -1,2 +1,2 @@
-# EKS created in root main.tf as aws_eks_cluster.this (do not look up).
+# bug: removed data.aws_eks_cluster lookup (cluster did not exist); create is aws_eks_cluster.this in main.tf
 locals {}
