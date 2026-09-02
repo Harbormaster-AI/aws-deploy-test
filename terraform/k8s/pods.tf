@@ -28,7 +28,7 @@ resource "kubernetes_replication_controller" "app-master" {
                     }
 
                     resources {
-                        requests {
+                        requests = {
                             cpu    = "100m"
                             memory = "100Mi"
                         }
@@ -54,10 +54,11 @@ resource "kubernetes_replication_controller" "app-master" {
                     value = "letmein2"
                 }
                 resources {
-                    requests {
+                    requests = {
                         cpu    = "100m"
                         memory = "100Mi"
                     }
+                }
                 }
             }
         }

@@ -56,9 +56,44 @@ resource "aws_vpc" "default" {
   cidr_block = "10.0.0.0/16"
 }
 
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 resource "aws_subnet" "default" {
-  vpc_id     = aws_vpc.default.id
-  cidr_block = "10.0.1.0/24"
+  vpc_id                  = aws_vpc.default.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[0]
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "secondary" {
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+}
+
+resource "aws_internet_gateway" "default" {
+  vpc_id = aws_vpc.default.id
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.default.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.default.id
+  }
+}
+
+resource "aws_route_table_association" "default" {
+  subnet_id      = aws_subnet.default.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_db_subnet_group" "default" {
+  name       = "bankingbackend-db-subnet"
+  subnet_ids = [aws_subnet.default.id, aws_subnet.secondary.id]
 }
 
 # -------------------------------------------------------
@@ -130,7 +165,7 @@ resource "aws_security_group" "db" {
 }
 
 resource "aws_db_instance" "default" {
-  depends_on             = [aws_security_group.db]
+  depends_on             = [aws_security_group.db, aws_db_subnet_group.default]
 #  identifier             = "bankingbackend-rds" # Terraform will create a unique id if not assigned
   allocated_storage      = 20
   engine                 = "mysql"
@@ -138,7 +173,9 @@ resource "aws_db_instance" "default" {
   db_name                = "bankingbackend"
   username               = "no_user_name"
   password               = "no_password"
+  db_subnet_group_name   = aws_db_subnet_group.default.name
   vpc_security_group_ids = [aws_security_group.db.id]
+  skip_final_snapshot    = true
 }
  
 # -------------------------------------------------------
@@ -160,13 +197,20 @@ resource "aws_iam_role" "eks" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks.name
+}
+
 resource "aws_eks_cluster" "this" {
   name     = "eks_cluster_bankingbackend"
   role_arn = aws_iam_role.eks.arn
 
   vpc_config {
-    subnet_ids = [aws_subnet.default.id]
+    subnet_ids = [aws_subnet.default.id, aws_subnet.secondary.id]
   }
+
+  depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
 }
 
 # -------------------------------------------------------
@@ -183,7 +227,7 @@ resource "aws_instance" "web" {
     # The default username for our ec2 instance
     type = "ssh"
     host = self.public_ip
-    user = "ubuntu"
+    user = "ec2-user"
     private_key = tls_private_key.generated.private_key_pem
   }
 
@@ -212,7 +256,9 @@ resource "aws_instance" "web" {
   # -------------------------------------------------------
   # Our Security group to allow HTTP and SSH access
   # -------------------------------------------------------
-  vpc_security_group_ids = [aws_security_group.web.id]
+  subnet_id                   = aws_subnet.default.id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.web.id]
 
   # -------------------------------------------------------
   # remote execution commands
@@ -220,17 +266,18 @@ resource "aws_instance" "web" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo apt-get -y update",
+      "sudo dnf -y install docker",
+      "sudo systemctl enable --now docker",
       "sudo docker login --username tylertravismya --password 69Cutlass",
       "sudo docker pull theharbormaster/banking-on-spring-boot-3-5:latest",
-      "sudo docker run -p 8000:8000 -p 8080:8080 -e DATABASE_URL=jdbc:mysql://${aws_db_instance.default.endpoint}/bankingbackend theharbormaster/banking-on-spring-boot-3-5:latest"
+      "sudo docker run -d -p 8000:8000 -p 8080:8080 -e DATABASE_URL=jdbc:mysql://${aws_db_instance.default.endpoint}/bankingbackend theharbormaster/banking-on-spring-boot-3-5:latest"
     ]
   }
 }
 
 output "ssh_command" {
   description = "Command to use to SSH into the instance."
-  value = "ssh -i ${local.private_key_filename} ubuntu@${aws_instance.web.public_ip}"
+  value = "ssh -i ${local.private_key_filename} ec2-user@${aws_instance.web.public_ip}"
 }
 
 
